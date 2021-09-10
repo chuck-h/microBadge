@@ -1,0 +1,22 @@
+2002  wget https://github.com/eosio/eosio.cdt/releases/download/v1.8.1/eosio.cdt_1.8.1-1-ubuntu-18.04_amd64.deb
+ 2003  sudo sudo apt install ./eosio.cdt_1.8.1-1-ubuntu-18.04_amd64.deb
+ 2014  sudo apt install cmake 
+
+ 2005  mkdir microBadge
+ 2006  cd microBadge/
+ 2007  eosio-init -project microBadge
+ 2009  cd microBadge/
+
+ 2015  cd build/
+ 2016  cmake ..
+
+ 2032  cleos wallet create --to-console
+ 2033  cleos wallet open
+ 2034  cleos wallet unlock
+ 2035  cleos wallet import
+
+ cleos -u https://api.tlos.goodblock.io system buyram microbadger2 microbadger2 "50 TLOS" -p microbadger2@active 
+ 2164  make clean; make
+ 2165  cleos wallet unlock
+ 2166  cleos -u https://api.tlos.goodblock.io set contract microbadger2 microBadge
+
