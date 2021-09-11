@@ -9,6 +9,34 @@ The contract itself implements no semantics, although default semantics are desc
 4. badgeeupdate - add information about the badge/badgee (badgee attested)
 5. badgeereject - signal that the badgee does not accept or agree to the badge 
 
+<h1 class="clause">Issuing Actions</h1>
+
+Example
+```
+cleos -u https://api.telos.caleos.io push transaction '{
+  "delay_sec": 0,
+  "max_cpu_usage_ms": 0,
+  "actions": [
+    {
+      "account": "alinevanmoer",
+      "name": "init",
+      "data": {
+        "issuer": "alinevanmoer",
+        "badge": "permaculturist",
+        "badgee": "freedomcell1",
+        "memo": "{'discordname':'@Miguel_regenerativo'}"
+      },
+      "authorization": [
+        {
+          "actor": "alinevanmoer",
+          "permission": "active"
+        }
+      ]
+    }
+  ]
+}'
+```
+
 <h1 class="clause">Effect</h1>
 
 This contract leaves only a "journal" of badge events on the blockchain. The contract contains no database which can be queried about badge assignments. (The only table maintained by the contract simply counts the number of badges issued and the number of badging actions.)
