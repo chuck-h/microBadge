@@ -18,7 +18,7 @@ cleos -u https://api.telos.caleos.io push transaction '{
   "max_cpu_usage_ms": 0,
   "actions": [
     {
-      "account": "alinevanmoer",
+      "account": "microbadger2",
       "name": "init",
       "data": {
         "issuer": "alinevanmoer",
