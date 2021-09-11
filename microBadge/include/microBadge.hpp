@@ -42,6 +42,7 @@ class [[eosio::contract]] microBadge : public contract {
          uint32_t all;
       };
       typedef singleton<"calls"_n, CallsStruct> calls_table;
-      typedef eosio::multi_index<"calls"_n, CallsStruct> dump_for_inits;
+      // following line explained at https://github.com/EOSIO/eosio.cdt/issues/280
+      typedef eosio::multi_index<"calls"_n, CallsStruct> dump_for_calls;
       calls_table calls;
 };
