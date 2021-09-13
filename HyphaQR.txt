@@ -1,0 +1,1 @@
+curl -d '{"actions": [{"account":"microbadger2", "name":"issuerupdate", "authorization": [{"actor":"...........1","permission":"...........2"}], "data":{"issuer": "chuckseattle", "badge": "sensing bot", "badgee": "annotate4bot", "memo": "use hypha QR gen"}}]}' -H 'Content-Type: application/json' https://api-esr.hypha.earth/qr
