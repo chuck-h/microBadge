@@ -2,7 +2,7 @@
 
 See https://github.com/chuck-h/microBadge/blob/main/microBadge/ricardian/microBadge.clauses.md
 
-A typical contract call:
+In this example contract call, account `agrauthority` gives `farmerthomas` the `permaculturist` badge. (`badgemaster1` is the account holding the microbadge contract; it is shared among all users of the badging service.)
 ```
 {
   "actions":[
