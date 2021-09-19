@@ -7,7 +7,7 @@ void microBadge::increment_calls() {
 }
 
 [[eosio::action]]
-void microBadge::init( name issuer, string badge, name badgee, string memo ) {
+void microBadge::init( name issuer, string badge, name badgee, string memo, string jsonmemo ) {
     require_auth( issuer );
     check( is_account( badgee ), "badgee account does not exist"); 
     require_recipient( badgee );
@@ -18,7 +18,7 @@ void microBadge::init( name issuer, string badge, name badgee, string memo ) {
 }
 
 [[eosio::action]]
-void microBadge::issuerupdate( name issuer, string badge, name badgee, string memo ) {
+void microBadge::issuerupdate( name issuer, string badge, name badgee, string memo, string jsonmemo ) {
     require_auth( issuer );
     check( is_account( badgee ), "badgee account does not exist"); 
     require_recipient( badgee );
@@ -34,7 +34,7 @@ void microBadge::cancel( name issuer, string badge, name badgee, string memo ) {
 }
 
 [[eosio::action]]
-void microBadge::badgeeupdate( name issuer, string badge, name badgee, string memo ) {
+void microBadge::badgeeupdate( name issuer, string badge, name badgee, string memo, string jsonmemo ) {
     require_auth( badgee );
     check( is_account( issuer ), "issuer account does not exist"); 
     require_recipient( issuer );

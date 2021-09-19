@@ -15,16 +15,16 @@ class [[eosio::contract]] microBadge : public contract {
          }
 
       [[eosio::action]]
-      void init( name issuer, string badge, name badgee, string memo );
+      void init( name issuer, string badge, name badgee, string memo, string jsonmemo );
 
       [[eosio::action]]
-      void issuerupdate( name issuer, string badge, name badgee, string memo );
+      void issuerupdate( name issuer, string badge, name badgee, string memo, string jsonmemo );
 
       [[eosio::action]]
       void cancel( name issuer, string badge, name badgee, string memo );
 
       [[eosio::action]]
-      void badgeeupdate( name issuer, string badge, name badgee, string memo );
+      void badgeeupdate( name issuer, string badge, name badgee, string memo, string jsonmemo );
 
       [[eosio::action]]
       void badgeereject( name issuer, string badge, name badgee, string memo );
