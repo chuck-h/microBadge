@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js">
+</script>
+<script type="text/javascript">
+$(document).ready(function () {
+  let testnet_url = "https://testnet.telos.caleos.io/v1/chain/push_transaction";
+  let esr_gen_url = "https://api-esr.hypha.earth/qr";
+  let test_transaction = {actions: [{account: "microbadger2",
+    name: "init", data: { issuer: "chuckseattle", badge: "grand poohbah", badgee: "thealchemist",
+      memo: "just kidding" },
+    authorization: [{actor: "...........1", permission: "active"}]
+    }]
+  };
+  $('#create').click(function(){
+    $.ajax({
+      type: "POST",
+      url: esr_gen_url,
+      data: JSON.stringify(test_transaction),
+      contentType: "application/json; charset=utf-8",
+      dataType: "json",
+      success: function(data, status, jqXHR) { 
+        // success callback
+        console.log(status);
+      }
+    });
+    // present the QR code for signing in jQuery modal window
+    // TBD: check blockchain for transaction posted, or timeout?
+  });
+});
+</script>
+</head>
+
+<body>
+
+<p>Create a microbadge</p>
+
+<form name="badge-data" class="badge-form" ">
+
+  <label for="issuer_account">Issuer Account:<input type="text" maxlength="12" id="issuer_account" name="issuer_account" value="">
+  </label><br>
+  <label for="badge_name">Badge name:<input type="text" id="badge_name" name="badge_name" value="">
+  </label><br>
+  <label for="badgee_account">Badgee Account:<input type="text" maxlength="12" id="badgee_account" name="badgee_account" value="">
+  </label><br>
+  <label for="memo_text">Memo (free text):<input type="text" id="memo_text" name="memo_text" value="">
+  </label><br>
+  <div id="button-wrapper">
+    <input type="button" id="create" value="Create badge">
+  </div>
+</form>
+
+</body>
+</html>
+

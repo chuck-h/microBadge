@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js">
+</script>
+<script src="https://unpkg.com/idb/build/iife/with-async-ittr-min.js"></script>
+
+
+<script>
+
+// DOM ready function
+$(function () {
+  $('#read').click(function(){
+      getBadgesFromChain();
+  });
+  $('#list').click(function(){
+    showBadgeList().catch(error => alert("Please reload page\n\n" + error));
+  });
+});
+
+const badgeDBVersion = 1;
+let db;
+async function setUpBadgeDB() {
+  db = await idb.openDB('BadgeDB', badgeDBVersion, {
+    upgrade(db) {
+      // Create a store of objects
+      const store = db.createObjectStore('badges', {
+        keyPath: 'globalseq'
+      });
+      // TODO is trx_id unique? multiple badge actions in one telos transaction?
+      // Create an indexes on issuer, badge, badgee
+      store.createIndex('issuer', 'issuer');
+      store.createIndex('badge', 'badge');
+      store.createIndex('badgee', 'badgee');
+    },
+  });
+}
+setUpBadgeDB();
+
+let total;
+
+async function getBadgesFromChain(offset=0) {
+  const received = await getPageFromChain(offset)
+  if (received) {
+    return await getBadgesFromChain(received);
+  } else {
+    return ;
+  }
+}
+
+async function getPageFromChain(received) {
+    const pagelimit = 4;
+    let history_url = "https://telos.caleos.io/v2/history/";
+    total = 0;
+    let url = history_url+"get_actions?account=microbadger2&filter=microbadger2:" +
+       "&skip=" + received + "&limit=" + pagelimit + "&sort=desc";
+    await $.get(url, function(data, status){
+      console.log(data);
+      if (status == 'success') {
+        total = data.total.value;
+        actions = data.actions;
+        for (i=0; i<actions.length; i++) {
+          let actiondata = actions[i].act.data;
+          let globalseq = actions[i].global_sequence;
+          let trx_id = actions[i].trx_id;
+          let issuer = actiondata.issuer;
+          let badge = actiondata.badge;
+          let badgee = actiondata.badgee;
+          let memo = actiondata.memo;
+          let jsonmemo = {};
+          if (actiondata.jsonmemo) { jsonmemo = actiondata.jsonmemo; };
+          received++;
+          console.log(received + ": " + globalseq);
+          record = {
+            globalseq: globalseq,
+            trx_id: trx_id,
+            issuer: issuer,
+            badge: badge,
+            badgee: badgee,
+            memo: memo,
+            jsonmemo: jsonmemo
+          };
+          db.add('badges', record).catch (function(e) {
+            if( e.message == 'Key already exists in the object store.') {
+              console.log("key exists ",globalseq);
+            } else {
+              console.error(e);
+            }
+          });
+        }
+      } 
+    },
+    'json');
+
+    return received < total ? received : undefined ;
+};
+
+
+async function showBadgeList() {
+  let tx = db.transaction('badges');
+  let badgeStore = tx.objectStore('badges');
+
+  let badges = await badgeStore.getAll();
+
+  if (badges.length) {
+    listElem.innerHTML = badges.map(badge => `<li>
+        ${badge.issuer} : ${badge.badge}, badgee: ${badge.badgee}, memo: ${badge.memo}
+      </li>`).join('');
+  } else {
+    listElem.innerHTML = '<li>No badges.</li>'
+  }
+
+}
+
+</script>
+</head>
+
+<body>
+
+<p>list microbadges</p>
+
+<form name="badge-data" class="badge-form" ">
+
+  <label for="issuer_account">Issuer Account:<input type="text" maxlength="12" id="issuer_account" name="issuer_account" value="">
+  </label><br>
+  <label for="badge_name">Badge name:<input type="text" id="badge_name" name="badge_name" value="">
+  </label><br>
+  <label for="badgee_account">Badgee Account:<input type="text" maxlength="12" id="badgee_account" name="badgee_account" value="">
+  </label><br>
+  <label for="memo_text">Memo (free text):<input type="text" id="memo_text" name="memo_text" value="">
+  </label><br>
+  <div id="button-wrapper">
+    <input type="button" id="read" value="get from chain">
+  </div>
+  <div id="button-wrapper">
+    <input type="button" id="list" value="db list">
+  </div>
+</form>
+
+<ul id="listElem"></ul>
+
+</body>
+</html>
+
