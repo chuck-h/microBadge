@@ -6,27 +6,42 @@
 <script type="text/javascript">
 $(document).ready(function () {
   let testnet_url = "https://testnet.telos.caleos.io/v1/chain/push_transaction";
-  let esr_gen_url = "https://api-esr.hypha.earth/qr";
+//  let esr_gen_url = "https://api-esr.hypha.earth/qr";
+  let esr_gen_url = "http://ec2-54-201-18-123.us-west-2.compute.amazonaws.com/qr"
   let test_transaction = {actions: [{account: "microbadger2",
     name: "init", data: { issuer: "chuckseattle", badge: "grand poohbah", badgee: "thealchemist",
-      memo: "just kidding" },
+      memo: "just kidding", jsonmemo: "{}" },
     authorization: [{actor: "...........1", permission: "active"}]
     }]
   };
   $('#create').click(function(){
+    transaction =  {actions: [{account: "microbadger2",
+        name: "init", data: { issuer: document.getElementById("issuer_account").value,
+        badge: document.getElementById("badge_name").value,
+        badgee: document.getElementById("badgee_account").value,
+        memo: document.getElementById("memo_text").value,
+        jsonmemo: document.getElementById("memo_json").value },
+      authorization: [{actor: "...........1", permission: "active"}]
+      }]
+    };
+
     $.ajax({
       type: "POST",
       url: esr_gen_url,
-      data: JSON.stringify(test_transaction),
+      data: JSON.stringify(transaction),
       contentType: "application/json; charset=utf-8",
       dataType: "json",
-      success: function(data, status, jqXHR) { 
-        // success callback
+      success: function(data, status, jqXHR) {
+        qr_url = data.qr.replace("https","http"); 
+        qrcode.innerHTML = `<img src=${qr_url}>`;
         console.log(status);
       }
     });
     // present the QR code for signing in jQuery modal window
     // TBD: check blockchain for transaction posted, or timeout?
+  });
+  $('#clear').click(function(){
+    qrcode.innerHTML = ``;
   });
 });
 </script>
@@ -46,10 +61,16 @@ $(document).ready(function () {
   </label><br>
   <label for="memo_text">Memo (free text):<input type="text" id="memo_text" name="memo_text" value="">
   </label><br>
+  <label for="memo_json">Memo (json):<input type="text" id="memo_json" name="memo_json" value="">
+  </label><br>
   <div id="button-wrapper">
-    <input type="button" id="create" value="Create badge">
+    <input type="button" id="create" value="Create QR">
+    <input type="button" id="clear" value="Clear image">
   </div>
 </form>
+
+<div id=qrcode>
+</div>
 
 </body>
 </html>
