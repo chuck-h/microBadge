@@ -8,37 +8,64 @@
 
 <script>
 
+var testnet_checkbox;
+
 // DOM ready function
 $(function () {
   $('#read').click(function(){
-      getBadgesFromChain();
+    getBadgesFromChain();
+  });
+  $('#clear').click(function(){
+    clearDB();
   });
   $('#list').click(function(){
     showBadgeList().catch(error => alert("Please reload page\n\n" + error));
   });
 });
 
-const badgeDBVersion = 1;
-let db;
-async function setUpBadgeDB() {
-  db = await idb.openDB('BadgeDB', badgeDBVersion, {
-    upgrade(db) {
-      // Create a store of objects
-      const store = db.createObjectStore('badges', {
-        keyPath: 'globalseq'
-      });
-      // TODO is trx_id unique? multiple badge actions in one telos transaction?
-      // Create an indexes on issuer, badge, badgee
-      store.createIndex('issuer', 'issuer');
-      store.createIndex('badge', 'badge');
-      store.createIndex('badgee', 'badgee');
+const badgeDBVersion = 2;
+
+var db;
+var dbs = {};
+async function setUpBadgeDB(DBName) {
+  dbs[DBName] = await idb.openDB(DBName, badgeDBVersion, {
+    upgrade: (db, oldVersion, newVersion, transaction) => {
+      switch (oldVersion) {
+        case 0:
+          // Create store
+          {
+          const store = db.createObjectStore('badges', {
+            keyPath: 'globalseq'
+          });
+          // Create an indexes on issuer, badge, badgee
+          store.createIndex('issuer', 'issuer');
+          store.createIndex('badge', 'badge');
+          store.createIndex('badgee', 'badgee');
+          store.createIndex('issuer+badge', ['issuer', 'badge'], {unique: false});
+          }// falls through
+        case 1:
+          {
+          const store = transaction.objectStore('badges');
+          store.createIndex('type', 'type');
+          }
+          break;
+        default:
+          console.error('unknown db version');
+      }
     },
   });
 }
-setUpBadgeDB();
+setUpBadgeDB('mainnetBadgeDB');
+setUpBadgeDB('testnetBadgeDB');
 
-let total;
+function clearDB() {
+    testnet_checkbox = document.getElementById("testmode");
+    db = dbs[testnet_checkbox.checked ? "testnetBadgeDB" : "mainnetBadgeDB"];
+    let badgeStore = db.transaction('badges', 'readwrite').objectStore('badges');
+    badgeStore.clear();
+}
 
+// get badge info from chain history, recurse a page at a time
 async function getBadgesFromChain(offset=0) {
   const received = await getPageFromChain(offset)
   if (received) {
@@ -49,20 +76,47 @@ async function getBadgesFromChain(offset=0) {
 }
 
 async function getPageFromChain(received) {
-    const pagelimit = 4;
-    let history_url = "https://telos.caleos.io/v2/history/";
-    total = 0;
-    let url = history_url+"get_actions?account=microbadger2&filter=microbadger2:" +
+    const pagelimit = 8;
+    var mainnet_nodes = [
+      "https://telos.caleos.io",
+      "https://hyperion.telosunlimited.io",
+      "https://telos.eosphere.io",
+    ];
+    var testnet_nodes = [
+      "https://testnet.telos.caleos.io"
+    ];
+    testnet_checkbox = document.getElementById("testmode");
+    if (testnet_checkbox.checked) {
+      db = dbs["testnetBadgeDB"];
+      var history_url = testnet_nodes[0] + "/v2/history/"
+      var contract = "c1111seattle";
+    } else {
+      db = dbs["mainnetBadgeDB"];
+      var history_url = mainnet_nodes[2] + "/v2/history/"
+      var contract = "microbadger2";
+    }
+    let total;
+    let url = history_url+
+       "get_actions?account="+contract+"&filter="+contract+":" +
        "&skip=" + received + "&limit=" + pagelimit + "&sort=desc";
     await $.get(url, function(data, status){
       console.log(data);
       if (status == 'success') {
         total = data.total.value;
-        actions = data.actions;
+        var actions = data.actions;
         for (i=0; i<actions.length; i++) {
           let actiondata = actions[i].act.data;
+          // work around peculiar bug in history v2 report
+          if (actiondata.account) {
+            actiondata = actiondata.data;
+          }
+          for (const [key, value] of Object.entries(actiondata)) {
+            console.log(`${key}: ${value}`);
+          }
           let globalseq = actions[i].global_sequence;
           let trx_id = actions[i].trx_id;
+          let timestamp = actions[i].timestamp;
+          let type = actions[i].act.name;
           let issuer = actiondata.issuer;
           let badge = actiondata.badge;
           let badgee = actiondata.badgee;
@@ -70,16 +124,20 @@ async function getPageFromChain(received) {
           let jsonmemo = {};
           if (actiondata.jsonmemo) { jsonmemo = actiondata.jsonmemo; };
           received++;
-          console.log(received + ": " + globalseq);
           record = {
             globalseq: globalseq,
             trx_id: trx_id,
+            timestamp: timestamp,
+            type: type,
             issuer: issuer,
             badge: badge,
             badgee: badgee,
             memo: memo,
             jsonmemo: jsonmemo
           };
+          console.log(received + ": ");// + Object.values(record));
+          // hack to ignore ancient testnet contract
+          if (type == 'hi') { continue; }
           db.add('badges', record).catch (function(e) {
             if( e.message == 'Key already exists in the object store.') {
               console.log("key exists ",globalseq);
@@ -97,17 +155,65 @@ async function getPageFromChain(received) {
 
 
 async function showBadgeList() {
+  testnet_checkbox = document.getElementById("testmode");
+  db = dbs[testnet_checkbox.checked ? "testnetBadgeDB" : "mainnetBadgeDB"];
+  let cancellation_checkbox = document.getElementById("showcancelled");
+  let showtrx_id_checkbox = document.getElementById("showtrx_id");
   let tx = db.transaction('badges');
   let badgeStore = tx.objectStore('badges');
-
-  let badges = await badgeStore.getAll();
-
-  if (badges.length) {
-    listElem.innerHTML = badges.map(badge => `<li>
-        ${badge.issuer} : ${badge.badge}, badgee: ${badge.badgee}, memo: ${badge.memo}
-      </li>`).join('');
+  let badges;
+  let query = {issuer: document.getElementById("issuer_account").value.trim(),
+               badge: document.getElementById("badge_name").value.trim(),
+               badgee: document.getElementById("badgee_account").value.trim(),
+               type: document.getElementById("type").value.trim() };
+  // native db filter for issuer:badge
+  if(query.issuer && query.badge) {
+    let index = badgeStore.index('issuer+badge');
+    badges = await index.getAll([query.issuer, query.badge]);
   } else {
-    listElem.innerHTML = '<li>No badges.</li>'
+    badges = await badgeStore.getAll();
+  }
+  // brute-force filter
+  let ix = badges.length - 1;
+  let cancellations = [];
+  while (ix >= 0) {
+    let item = badges[ix];
+    let signature = item.issuer + item.badge + item.badgee;
+    if (item.type == 'cancel' && !cancellation_checkbox.checked) {
+      console.log("cancel " + signature);
+      cancellations.push(signature);
+    }
+    let reject = (query.issuer && query.issuer != item.issuer) ||
+                 (query.badge && query.badge != item.badge) ||
+                 (query.badgee && query.badgee != item.badgee) ||
+                 (query.type!="all" && query.type != item.type) ||
+                 cancellations.includes(signature);
+    if (reject) {
+      badges.splice(ix, 1);
+    }
+    ix -= 1;
+  }
+  if (badges.length) {
+      if ( showtrx_id_checkbox.checked ) {
+          listElem.innerHTML = badges.map(badge => `<li>
+              [${badge.type}]<br> ${badge.issuer} : ${badge.badge} &emsp;
+              <i>badgee:</i> ${badge.badgee}<br>
+              <i>memo:</i> ${badge.memo}<br>
+              <i>jsonmemo:</i> ${JSON.stringify(badge.jsonmemo)}<br>
+              <i>trx hash:</i> ${badge.trx_id}<br>
+              <i>action seq:</i> ${badge.globalseq}<br>
+              <i>timestamp:</i> ${badge.timestamp}
+          </li>`).join('');
+      } else {
+          listElem.innerHTML = badges.map(badge => `<li>
+              [${badge.type}]<br> ${badge.issuer} : ${badge.badge} &emsp;
+              <i>badgee:</i> ${badge.badgee}<br>
+              <i>memo:</i> ${badge.memo}<br>
+              <i>jsonmemo:</i> ${JSON.stringify(badge.jsonmemo)}
+          </li>`).join('');
+      }
+  } else {
+    listElem.innerHTML = '<li>No matching badge actions.</li>'
   }
 
 }
@@ -116,25 +222,50 @@ async function showBadgeList() {
 </head>
 
 <body>
+<h2>list microbadges</h2>
+<input type="button" value="Enter new badge event" 
+       onclick="window.location.assign('basic.html')" />
 
-<p>list microbadges</p>
+<p>
+<label for="testmode">Use Testnet:</label> 
+<input type="checkbox" id="testmode" >
+</p>
 
 <form name="badge-data" class="badge-form" ">
 
   <label for="issuer_account">Issuer Account:<input type="text" maxlength="12" id="issuer_account" name="issuer_account" value="">
   </label><br>
-  <label for="badge_name">Badge name:<input type="text" id="badge_name" name="badge_name" value="">
+  <label for="badge_name">Badge Name:<input type="text" id="badge_name" name="badge_name" value="">
   </label><br>
   <label for="badgee_account">Badgee Account:<input type="text" maxlength="12" id="badgee_account" name="badgee_account" value="">
   </label><br>
-  <label for="memo_text">Memo (free text):<input type="text" id="memo_text" name="memo_text" value="">
-  </label><br>
+  <p>
+  <label for="type">Action Type:</label>
+  <select name="type" id="type">
+    <option value="all">all</option>
+    <option value="init">Issue badge</option>
+    <option value="cancel">Cancel badge</option>
+    <option value="issuerupdate">Update badge (by issuer)</option>
+    <option value="badgeeupdate">Update badge (by badgee)</option>
+    <option value="badgeereject">Reject badge (by badgee)</option>
+  </select>
+  </p>
   <div id="button-wrapper">
-    <input type="button" id="read" value="get from chain">
+    <input type="button" id="read" value="update from chain">
+    <input type="button" id="clear" value="clear local db">
   </div>
+<p>
+<label for="showcancelled">Show cancelled badges:</label> 
+<input type="checkbox" id="showcancelled" ><br>
+<label for="showtrx_id">Show extra details:</label> 
+<input type="checkbox" id="showtrx_id" >
+</p>
+<p>
   <div id="button-wrapper">
-    <input type="button" id="list" value="db list">
+    <input type="button" id="list" value="display selected badge actions">
   </div>
+</p>
+
 </form>
 
 <ul id="listElem"></ul>
