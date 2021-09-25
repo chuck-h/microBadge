@@ -159,6 +159,7 @@ async function showBadgeList() {
   db = dbs[testnet_checkbox.checked ? "testnetBadgeDB" : "mainnetBadgeDB"];
   let cancellation_checkbox = document.getElementById("showcancelled");
   let showtrx_id_checkbox = document.getElementById("showtrx_id");
+  let names_only_checkbox = document.getElementById("names_only");
   let tx = db.transaction('badges');
   let badgeStore = tx.objectStore('badges');
   let badges;
@@ -194,7 +195,11 @@ async function showBadgeList() {
     ix -= 1;
   }
   if (badges.length) {
-      if ( showtrx_id_checkbox.checked ) {
+      if ( names_only_checkbox.checked ) {
+          listElem.innerHTML = badges.map(badge => `<li>
+              ${badge.badgee}<br>
+          </li>`).join('');
+      } else if ( showtrx_id_checkbox.checked ) {
           listElem.innerHTML = badges.map(badge => `<li>
               [${badge.type}]<br> ${badge.issuer} : ${badge.badge} &emsp;
               <i>badgee:</i> ${badge.badgee}<br>
@@ -257,6 +262,8 @@ async function showBadgeList() {
 <p>
 <label for="showcancelled">Show cancelled badges:</label> 
 <input type="checkbox" id="showcancelled" ><br>
+<label for="names_only">Show badgee names only:</label> 
+<input type="checkbox" id="names_only" ><br>
 <label for="showtrx_id">Show extra details:</label> 
 <input type="checkbox" id="showtrx_id" >
 </p>
