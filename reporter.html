@@ -58,14 +58,35 @@ async function setUpBadgeDB(DBName) {
 setUpBadgeDB('mainnetBadgeDB');
 setUpBadgeDB('testnetBadgeDB');
 
+function selectDB(testnet_checked) {
+    var mainnet_nodes = [
+      "https://telos.caleos.io",
+      "https://hyperion.telosunlimited.io",
+      "https://telos.eosphere.io",
+    ];
+    var testnet_nodes = [
+      "https://testnet.telos.caleos.io"
+    ];
+    if (testnet_checked) {
+      db = dbs["testnetBadgeDB"];
+      var history_url = testnet_nodes[0] + "/v2/history/"
+      var contract = "c1111seattle";
+    } else {
+      db = dbs["mainnetBadgeDB"];
+      var history_url = mainnet_nodes[2] + "/v2/history/"
+      var contract = "microbadger2";
+    }
+    return [db, history_url, contract];
+}
+
 function clearDB() {
-    testnet_checkbox = document.getElementById("testmode");
-    db = dbs[testnet_checkbox.checked ? "testnetBadgeDB" : "mainnetBadgeDB"];
+    let [db] = selectDB(document.getElementById("testmode").checked);
     let badgeStore = db.transaction('badges', 'readwrite').objectStore('badges');
     badgeStore.clear();
 }
 
-// get badge info from chain history, recurse a page at a time
+
+// get badge info from chain history, recursively a page at a time
 async function getBadgesFromChain(offset=0) {
   const received = await getPageFromChain(offset)
   if (received) {
@@ -77,25 +98,8 @@ async function getBadgesFromChain(offset=0) {
 
 async function getPageFromChain(received) {
     const pagelimit = 8;
-    var mainnet_nodes = [
-      "https://telos.caleos.io",
-      "https://hyperion.telosunlimited.io",
-      "https://telos.eosphere.io",
-    ];
-    var testnet_nodes = [
-      "https://testnet.telos.caleos.io"
-    ];
-    testnet_checkbox = document.getElementById("testmode");
-    if (testnet_checkbox.checked) {
-      db = dbs["testnetBadgeDB"];
-      var history_url = testnet_nodes[0] + "/v2/history/"
-      var contract = "c1111seattle";
-    } else {
-      db = dbs["mainnetBadgeDB"];
-      var history_url = mainnet_nodes[2] + "/v2/history/"
-      var contract = "microbadger2";
-    }
     let total;
+    let [db, history_url, contract] = selectDB(document.getElementById("testmode").checked);
     let url = history_url+
        "get_actions?account="+contract+"&filter="+contract+":" +
        "&skip=" + received + "&limit=" + pagelimit + "&sort=desc";
