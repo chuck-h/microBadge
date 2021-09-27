@@ -96,12 +96,19 @@ async function getBadgesFromChain(offset=0) {
   }
 }
 
+var lastDBDate;
+const badgeEpoch = "2021-09-09T00:00:00.000";
 async function getPageFromChain(received) {
     const pagelimit = 8;
     let total;
     let [db, history_url, contract] = selectDB(document.getElementById("testmode").checked);
+    // we will only request action history newer than we already have in local DB
+    if ( received == 0) {
+      let cursor = await db.transaction("badges").store.openCursor(IDBKeyRange.lowerBound(0),"prev");
+      lastDBDate = cursor? cursor.value.timestamp : badgeEpoch;
+    }
     let url = history_url+
-       "get_actions?account="+contract+"&filter="+contract+":" +
+       "get_actions?account="+contract + "&after="+lastDBDate + "&filter="+contract+":" +
        "&skip=" + received + "&limit=" + pagelimit + "&sort=desc";
     await $.get(url, function(data, status){
       console.log(data);
@@ -114,9 +121,9 @@ async function getPageFromChain(received) {
           if (actiondata.account) {
             actiondata = actiondata.data;
           }
-          for (const [key, value] of Object.entries(actiondata)) {
-            console.log(`${key}: ${value}`);
-          }
+          //for (const [key, value] of Object.entries(actiondata)) {
+          //  console.log(`${key}: ${value}`);
+          //}
           let globalseq = actions[i].global_sequence;
           let trx_id = actions[i].trx_id;
           let timestamp = actions[i].timestamp;
@@ -140,8 +147,6 @@ async function getPageFromChain(received) {
             jsonmemo: jsonmemo
           };
           console.log(received + ": ");// + Object.values(record));
-          // hack to ignore ancient testnet contract
-          if (type == 'hi') { continue; }
           db.add('badges', record).catch (function(e) {
             if( e.message == 'Key already exists in the object store.') {
               console.log("key exists ",globalseq);
@@ -185,7 +190,7 @@ async function showBadgeList() {
     let item = badges[ix];
     let signature = item.issuer + item.badge + item.badgee;
     if (item.type == 'cancel' && !cancellation_checkbox.checked) {
-      console.log("cancel " + signature);
+      //console.log("cancel " + signature);
       cancellations.push(signature);
     }
     let reject = (query.issuer && query.issuer != item.issuer) ||
@@ -232,7 +237,9 @@ async function showBadgeList() {
 
 <body>
 <h2>list microbadges</h2>
-<input type="button" value="Enter new badge event" 
+
+<label for="newbadge">switch to:</label> 
+<input type="button" value="Add new badge events" id="newbadge"
        onclick="window.location.assign('basic.html')" />
 
 <p>
