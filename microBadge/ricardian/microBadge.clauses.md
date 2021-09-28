@@ -2,7 +2,7 @@
 
 This contract supports a lightweight "badging" system whereby any Telos account may issue a named badge (e.g. "permaculture practitioner") to any other account. The two accounts are called the "issuer" and the "badgee", respectively.
 
-The contract itself implements no semantics, although default semantics are described in the ricardian contract. Because two issuers may use the same badge name for different purposes, the meaning of an action should always be interpreted in the context of the issuer identity. The 5 actions supported are
+The contract itself implements no semantics, although default semantics are described in the ricardian contract. Because two issuers may use the same badge name for different purposes, the meaning of an action should always be interpreted in the context of the issuer identity (e.g. <issuer>:<badgename>). The 5 actions supported are
 1. init - create a new badge assignment
 2. issuerupdate - add information about the badge/badgee (issuer attested)
 3. cancel - revoke a badge assignment (issuer action)
@@ -24,7 +24,8 @@ cleos -u https://api.telos.caleos.io push transaction '{
         "issuer": "alinevanmoer",
         "badge": "permaculturist",
         "badgee": "freedomcell1",
-        "memo": "{'discordname':'@Miguel_regenerativo'}"
+        "memo": "since 1958",
+        "jsonmemo": "{'discordname':'@Miguel_regenerativo'}"
       },
       "authorization": [
         {
@@ -49,7 +50,12 @@ will return a JSON-encoded response listing all the badges issued by the myissue
 
 Simple history filtering is available in an interactive web UI through most block explorers e.g. `telos.bloks.io`.
 
-This contract leaves only a "journal" of badge events on the blockchain. The contract 
+<h1 class="clause">Example user interface</h1>
+
+Two static web pages are offered as example tools for writing and reading badges:
+  * https://github.com/chuck-h/microBadge/blob/main/basic.html
+  * https://github.com/chuck-h/microBadge/blob/main/reporter.html
+
 <h1 class="clause">Disclaimer</h1>
 
 This contract is a work in progress and performance is not guaranteed
